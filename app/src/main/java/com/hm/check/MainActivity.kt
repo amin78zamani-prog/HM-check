@@ -17,6 +17,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtStatusDesc: TextView
     private lateinit var txtSockets: TextView
     private lateinit var txtTraffic: TextView
+    private lateinit var lineChart: LineChartView
     private lateinit var btnSimulate: Button
 
     private var isThreatActive = false
@@ -27,34 +28,30 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال المان‌های رابط کاربری
         cardStatus = findViewById(R.id.cardStatus)
         txtStatusTitle = findViewById(R.id.txtStatusTitle)
         txtStatusDesc = findViewById(R.id.txtStatusDesc)
         txtSockets = findViewById(R.id.txtSockets)
         txtTraffic = findViewById(R.id.txtTraffic)
+        lineChart = findViewById(R.id.lineChart)
         btnSimulate = findViewById(R.id.btnSimulate)
 
-        // مدیریت کلیک دکمه شبیه‌سازی برای ارائه در جلسه دفاع
         btnSimulate.setOnClickListener {
             isThreatActive = !isThreatActive
             updateDashboardState()
         }
 
-        // راه‌اندازی شبیه‌ساز به‌روزرسانی زنده مقادیر شبکه
         startLiveMonitoring()
     }
 
     private fun updateDashboardState() {
         if (isThreatActive) {
-            // حالت خطر / ناهنجاری شبکه
-            cardStatus.setBackgroundColor(Color.parseColor("#E74C3C")) // رنگ قرمز
+            cardStatus.setBackgroundColor(Color.parseColor("#E74C3C"))
             txtStatusTitle.text = "هشدار امنیتی!"
             txtStatusDesc.text = "شناسایی ترافیک مشکوک شبکه (ارتباط C&C)"
             btnSimulate.text = "بازنشانی داشبورد"
         } else {
-            // حالت امن و عادی
-            cardStatus.setBackgroundColor(Color.parseColor("#27AE60")) // رنگ سبز
+            cardStatus.setBackgroundColor(Color.parseColor("#27AE60"))
             txtStatusTitle.text = "سیستم ایمن"
             txtStatusDesc.text = "هیچ ناهنجاری در شبکه شناسایی نشد"
             btnSimulate.text = "شبیه‌سازی تهدید امنیتی"
@@ -65,17 +62,20 @@ class MainActivity : AppCompatActivity() {
         liveUpdateRunnable = object : Runnable {
             override fun run() {
                 if (!isThreatActive) {
-                    // تولید مقادیر تصادفی نرمال برای سوکت‌ها و پهنای باند
                     val randomSockets = Random.nextInt(10, 25)
                     txtSockets.text = "سوکت‌های فعال: $randomSockets"
                     txtTraffic.text = "ترافیک شبکه: عادی (${Random.nextInt(120, 350)} کیلوبایت بر ثانیه)"
+                    
+                    // ارسال مقدار نرمال به نمودار (بین 15 تا 35)
+                    lineChart.addDataPoint(Random.nextFloat() * 20f + 15f, false)
                 } else {
-                    // مقادیر بالا و مشکوک در حالت تهدید
                     val highSockets = Random.nextInt(70, 120)
                     txtSockets.text = "سوکت‌های فعال: $highSockets (بحرانی)"
                     txtTraffic.text = "ترافیک شبکه: بحرانی (${Random.nextInt(2, 5)} مگابایت بر ثانیه)"
+                    
+                    // ارسال مقدار بالا و بحرانی به نمودار (بین 70 تا 95)
+                    lineChart.addDataPoint(Random.nextFloat() * 25f + 70f, true)
                 }
-                // تکرار هر ۲ ثانیه برای ایجاد حس داشبورد زنده
                 handler.postDelayed(this, 2000)
             }
         }
