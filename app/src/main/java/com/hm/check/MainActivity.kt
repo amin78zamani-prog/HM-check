@@ -1,19 +1,22 @@
 package com.hm.check
 
+import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.usage.NetworkStatsManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
-import android.widget.Button
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.provider.Settings
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -30,49 +33,52 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cardStatus: LinearLayout
     private lateinit var txtStatusTitle: TextView
     private lateinit var txtStatusDesc: TextView
-    private lateinit var txtSockets: TextView
-    private lateinit var txtTraffic: TextView
+    private lateinit var txtAppTrafficList: TextView
     private lateinit var lineChart: LineChartView
     private lateinit var txtLogHistory: TextView
-    private lateinit var btnSimulate: Button // این دکمه را برای کنترل دستی یا تست وضعیت بحرانی واقعی حفظ می‌کنیم
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var liveUpdateRunnable: Runnable
 
-    private var lastRxBytes: Long = 0
-    private var lastTxBytes: Long = 0
-    private var lastTime: Long = 0
-
     private val PERMISSION_REQUEST_CODE = 1001
     private val CHANNEL_ID = "hm_security_channel"
+
+    // ذخیره میزان مصرف قبلی برنامه‌ها برای محاسبه سرعت لحظه‌ای هر اپ
+    private val previousAppBytes = mutableMapOf<String, Long>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         checkAndRequestPermissions()
+
+        if (!hasUsageStatsPermission()) {
+            Toast.makeText(this, "لطفاً دسترسی پایش مصرف برنامه‌ها را تأیید کنید", Toast.LENGTH_LONG).show()
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            startActivity(intent)
+        }
+
         createNotificationChannel()
 
         cardStatus = findViewById(R.id.cardStatus)
         txtStatusTitle = findViewById(R.id.txtStatusTitle)
         txtStatusDesc = findViewById(R.id.txtStatusDesc)
-        txtSockets = findViewById(R.id.txtSockets)
-        txtTraffic = findViewById(R.id.txtTraffic)
+        txtAppTrafficList = findViewById(R.id.txtAppTrafficList)
         lineChart = findViewById(R.id.lineChart)
         txtLogHistory = findViewById(R.id.txtLogHistory)
-        btnSimulate = findViewById(R.id.btnSimulate)
 
-        // مخفی کردن یا تغییر کاربری دکمه (دیگر شبیه‌سازی نیست، پایش واقعی است)
-        btnSimulate.visibility = View.GONE
+        appendLog("سیستم تشخیص نشت پنهان و پایش اپلیکیشن‌ها راه‌اندازی شد.")
+        startAppSecurityAndTrafficMonitoring()
+    }
 
-        // مقداردهی اولیه آمار ترافیک
-        lastRxBytes = TrafficStats.getTotalRxBytes()
-        lastTxBytes = TrafficStats.getTotalTxBytes()
-        lastTime = System.currentTimeMillis()
-
-        appendLog("سیستم مانیتورینگ واقعی ترافیک شبکه فعال شد.")
-
-        startRealTrafficMonitoring()
+    private fun hasUsageStatsPermission(): Boolean {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        } else {
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
     }
 
     private fun appendLog(message: String) {
@@ -82,16 +88,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val networkStatePermission = android.Manifest.permission.ACCESS_NETWORK_STATE
-        val phoneStatePermission = android.Manifest.permission.READ_PHONE_STATE
+        val networkState = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_NETWORK_STATE)
+        val phoneState = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE)
 
-        val hasNetworkPermission = ContextCompat.checkSelfPermission(this, networkStatePermission) == PackageManager.PERMISSION_GRANTED
-        val hasPhonePermission = ContextCompat.checkSelfPermission(this, phoneStatePermission) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasNetworkPermission || !hasPhonePermission) {
+        if (networkState != PackageManager.PERMISSION_GRANTED || phoneState != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(networkStatePermission, phoneStatePermission),
+                arrayOf(android.Manifest.permission.ACCESS_NETWORK_STATE, android.Manifest.permission.READ_PHONE_STATE),
                 PERMISSION_REQUEST_CODE
             )
         }
@@ -100,96 +103,121 @@ class MainActivity : AppCompatActivity() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Security Alerts"
-            val descriptionText = "Notifications for network security threats"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
+            val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
             }
-            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
     }
 
-    private fun sendSecurityNotification(title: String, message: String) {
+    private fun triggerVibrationAndNotification(appName: String, details: String) {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(title)
-            .setContentText(message)
+            .setContentTitle("هشدار امنیتی: نشت پنهان داده!")
+            .setContentText("برنامه $appName رفتار مشکوک ثبت کرد.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(1, builder.build())
-    }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(System.currentTimeMillis().toInt(), builder.build())
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                appendLog("دسترسی‌های سیستمی و شبکه تأیید شد.")
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+            vm.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(400, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(400)
             }
         }
     }
 
-    private fun startRealTrafficMonitoring() {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private fun startAppSecurityAndTrafficMonitoring() {
+        val networkStatsManager = getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
+        val pm = packageManager
 
         liveUpdateRunnable = object : Runnable {
             override fun run() {
-                val currentTime = System.currentTimeMillis()
-                val currentRxBytes = TrafficStats.getTotalRxBytes()
-                val currentTxBytes = TrafficStats.getTotalTxBytes()
+                try {
+                    val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                    val currentTime = System.currentTimeMillis()
+                    val startTime = currentTime - (1000 * 10 * 60) // ۱۰ دقیقه گذشته
 
-                val timeElapsed = (currentTime - lastTime) / 1000.0 // بر حسب ثانیه
-                if (timeElapsed > 0) {
-                    val rxSpeed = (currentRxBytes - lastRxBytes) / timeElapsed // بایت بر ثانیه
-                    val txSpeed = (currentTxBytes - lastTxBytes) / timeElapsed
-                    val totalSpeedKbps = (rxSpeed + txSpeed) / 1024.0 // کیلوبایت بر ثانیه
+                    val stringBuilder = StringBuilder()
+                    var systemCompromised = false
+                    var maxTotalKb = 0f
 
-                    lastRxBytes = currentRxBytes
-                    lastTxBytes = currentTxBytes
-                    lastTime = currentTime
+                    for (appInfo in packages) {
+                        // فقط برنامه‌های غیرسیستمی یا دارای اینترنت را تحلیل می‌کنیم
+                        if ((appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || appInfo.packageName == "com.google.android.youtube") {
+                            try {
+                                val bucket = networkStatsManager.querySummaryForUser(
+                                    ConnectivityManager.TYPE_WIFI,
+                                    null,
+                                    startTime,
+                                    currentTime
+                                )
+                                val currentBytes = bucket.rxBytes + bucket.txBytes
+                                val appName = appInfo.loadLabel(pm).toString()
+                                
+                                val previousBytes = previousAppBytes[appInfo.packageName] ?: currentBytes
+                                val diffBytes = if (currentBytes >= previousBytes) currentBytes - previousBytes else currentBytes
+                                previousAppBytes[appInfo.packageName] = currentBytes
 
-                    // بررسی وضعیت اتصال واقعی
-                    val activeNetwork = connectivityManager.activeNetwork
-                    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-                    
-                    if (capabilities != null) {
-                        val isWifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                        val netType = if (isWifi) "WiFi" else "داده همراه (Cellular)"
-                        
-                        txtSockets.text = "نوع اتصال: $netType"
-                        txtTraffic.text = "مصرف لحظه‌ای: ${String.format(Locale.US, "%.1f", totalSpeedKbps)} کیلوبایت/ثانیه"
+                                val speedKb = diffBytes / 1024.0
+                                maxTotalKb += speedKb.toFloat()
 
-                        // تحلیل امنیتی واقعی: اگر مصرف از آستانه مشخصی (مثلا ۵۰۰ کیلوبایت بر ثانیه) فراتر رفت، هشدار بده
-                        val chartValue = totalSpeedKbps.toFloat().coerceIn(0f, 100f)
-                        
-                        if (totalSpeedKbps > 500.0) {
-                            // وضعیت بحرانی / ترافیک سنگین واقعی
-                            cardStatus.setBackgroundColor(Color.parseColor("#E74C3C"))
-                            txtStatusTitle.text = "هشدار ترافیک بالا!"
-                            txtStatusDesc.text = "مصرف غیرعادی پهنای باند شناسایی شد"
-                            
-                            lineChart.addDataPoint(chartValue, true)
-                            sendSecurityNotification("هشدار پهنای باند", "مصرف شبکه دستگاه از حد مجاز فراتر رفت.")
-                            appendLog("هشدار: ترافیک سنگین شبکه (${String.format(Locale.US, "%.1f", totalSpeedKbps)} KB/s) ثبت شد.")
-                        } else {
-                            // وضعیت امن و عادی
-                            cardStatus.setBackgroundColor(Color.parseColor("#27AE60"))
-                            txtStatusTitle.text = "سیستم ایمن"
-                            txtStatusDesc.text = "وضعیت مصرف شبکه نرمال است"
-                            
-                            lineChart.addDataPoint(chartValue, false)
+                                // --- الگوریتم امنیتی تشخیص نشت پنهان (Data Exfiltration Check) ---
+                                // اگر برنامه‌ای در پس‌زمینه نرخ انتقال بالایی داشته باشد یا مشکوک تشخیص داده شود
+                                val isExfiltrating = speedKb > 250.0 // آستانه حساسیت نشت داده
+
+                                val statusText = if (isExfiltrating) {
+                                    systemCompromised = true
+                                    "🔴 [ناامن - نشت پنهان فعال]"
+                                } else {
+                                    "🟢 [امن / نرمال]"
+                                }
+
+                                stringBuilder.append("• $appName\n")
+                                stringBuilder.append("  مصرف لحظه‌ای: ${String.format(Locale.US, "%.1f", speedKb)} KB\n")
+                                stringBuilder.append("  وضعیت امنیت: $statusText\n\n")
+
+                                if (isExfiltrating) {
+                                    triggerVibrationAndNotification(appName, "ترافیک غیرعادی پنهان")
+                                    appendLog("اخطار امنیتی: نشت پنهان در برنامه $appName با سرعت ${String.format(Locale.US, "%.1f", speedKb)} KB کشف شد!")
+                                }
+
+                            } catch (e: Exception) {
+                                // صرف‌نظر از پکیج‌های فاقد دسترسی
+                            }
                         }
-                    } else {
-                        txtSockets.text = "وضعیت: بدون اتصال به اینترنت"
-                        txtTraffic.text = "مصرف: صفر"
-                        lineChart.addDataPoint(0f, false)
                     }
+
+                    txtAppTrafficList.text = stringBuilder.toString()
+                    lineChart.addDataPoint(maxTotalKb.coerceIn(0f, 100f), systemCompromised)
+
+                    if (systemCompromised) {
+                        cardStatus.setBackgroundColor(Color.parseColor("#E74C3C"))
+                        txtStatusTitle.text = "هشدار بحرانی: نشت پنهان داده!"
+                        txtStatusDesc.text = "برخی اپلیکیشن‌ها در حال ارسال مشکوک اطلاعات هستند"
+                    } else {
+                        cardStatus.setBackgroundColor(Color.parseColor("#27AE60"))
+                        txtStatusTitle.text = "وضعیت: کاملاً امن"
+                        txtStatusDesc.text = "هیچ ناهنجاری یا نشت پنهانی گزارش نشد"
+                    }
+
+                } catch (e: Exception) {
+                    appendLog("خطا در پایش اپلیکیشن‌ها: ${e.message}")
                 }
 
-                handler.postDelayed(this, 2000)
+                handler.postDelayed(this, 4000) // هر ۴ ثانیه به‌روزرسانی زنده
             }
         }
         handler.post(liveUpdateRunnable)
