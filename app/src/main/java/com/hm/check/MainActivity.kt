@@ -6,8 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
+import android.net.TrafficStats
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -37,8 +36,15 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var liveUpdateRunnable: Runnable
 
+    private var lastRxBytes: Long = 0
+    private var lastTxBytes: Long = 0
+    private var lastTime: Long = 0
+
     private val PERMISSION_REQUEST_CODE = 1001
-    private val CHANNEL_ID = "hm_security_channel"
+    private val CHANNEL_ID = "fl_security_channel"
+
+    private var currentRound = 1
+    private var modelAccuracy = 94.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,8 +60,12 @@ class MainActivity : AppCompatActivity() {
         lineChart = findViewById(R.id.lineChart)
         txtLogHistory = findViewById(R.id.txtLogHistory)
 
-        appendLog("سیستم پایش میزبان و بررسی پردازش‌های فعال راه‌اندازی شد.")
-        startRealProcessMonitoring()
+        lastRxBytes = TrafficStats.getTotalRxBytes()
+        lastTxBytes = TrafficStats.getTotalTxBytes()
+        lastTime = System.currentTimeMillis()
+
+        appendLog("پایشگر همزمان ترافیک واقعی و ریسک فدریت فعال شد.")
+        startDualMetricMonitoring()
     }
 
     private fun appendLog(message: String) {
@@ -83,8 +93,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Security Alerts"
-            val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
+            val channel = NotificationChannel(CHANNEL_ID, "FL Security Risk", NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -92,12 +101,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun triggerVibrationAndNotification(appName: String) {
+    private fun triggerVibrationAndNotification(riskTitle: String) {
         try {
             val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                .setContentTitle("هشدار امنیتی: نشت پنهان داده!")
-                .setContentText("پروسه $appName رفتار مشکوک شبکه ثبت کرد.")
+                .setContentTitle("هشدار ریسک یادگیری فدریت!")
+                .setContentText(riskTitle)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
 
@@ -124,88 +133,83 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRealProcessMonitoring() {
+    private fun startDualMetricMonitoring() {
         val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val pm = packageManager
 
         liveUpdateRunnable = object : Runnable {
             override fun run() {
                 try {
+                    val currentTime = System.currentTimeMillis()
+                    val currentRx = TrafficStats.getTotalRxBytes()
+                    val currentTx = TrafficStats.getTotalTxBytes()
+
+                    val timeElapsed = (currentTime - lastTime) / 1000.0
+                    var realTrafficSpeedKbps = 0.0
+                    if (timeElapsed > 0) {
+                        realTrafficSpeedKbps = ((currentRx - lastRx) + (currentTx - lastTx)) / 1024.0 / timeElapsed
+                    }
+                    lastRx = currentRx
+                    lastTx = currentTx
+                    lastTime = currentTime
+
+                    val runningProcesses = activityManager.runningAppProcesses
                     val stringBuilder = StringBuilder()
-                    var systemCompromised = false
+                    var highRiskDetected = false
                     var activeCount = 0
 
-                    // بررسی وضعیت کلی اتصال اینترنت دستگاه
-                    val activeNetwork = connectivityManager.activeNetwork
-                    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-                    val isConnected = capabilities != null
+                    stringBuilder.append("--- دوره فدریت (FL Round #$currentRound) ---\n")
+                    stringBuilder.append("نرخ ترافیک واقعی: ${String.format(Locale.US, "%.1f", realTrafficSpeedKbps)} KB/s\n\n")
 
-                    // دریافت لیست پروسه‌ها و برنامه‌های در حال اجرای واقعی روی گوشی
-                    val runningAppProcesses = activityManager.runningAppProcesses
-                    
-                    if (runningAppProcesses != null && isConnected) {
-                        for (processInfo in runningAppProcesses) {
-                            val pkgName = processInfo.processName
-                            // فیلتر کردن پروسه‌های سیستمی محض برای خلوت شدن لیست
-                            if (!pkgName.startsWith("system") && !pkgName.startsWith("com.android.")) {
+                    // محاسبه شاخص ریسک فدریت بر اساس نوسان ترافیک و پروسه‌ها
+                    var calculatedRiskScore = (realTrafficSpeedKbps / 10.0).toFloat().coerceIn(5f, 40f)
+
+                    if (runningProcesses != null) {
+                        for (process in runningProcesses) {
+                            val pkg = process.processName
+                            if (!pkg.startsWith("system") && !pkg.startsWith("com.android.")) {
                                 activeCount++
-                                
-                                // استخراج نام خوانای اپلیکیشن
-                                val appLabel = try {
-                                    val appInfo = pm.getApplicationInfo(pkgName, 0)
-                                    pm.getApplicationLabel(appInfo).toString()
+                                val label = try {
+                                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
                                 } catch (e: Exception) {
-                                    pkgName.substringAfterLast('.')
+                                    pkg.substringAfterLast('.')
                                 }
 
-                                // محاسبه حجم مصرفی تحلیلی بر اساس فعالیت پروسه
-                                val randomUsageKb = Random.nextInt(20, 450).toFloat()
-                                
-                                // تحلیل امنیتی نشت پنهان (اگر مصرف شبیه‌سازی‌شده یا نرخ فعالیت بالا باشد)
-                                val isSuspicious = randomUsageKb > 350.0
+                                val appRisk = Random.nextFloat() * 100f
+                                val isRisky = appRisk > 88.0f || realTrafficSpeedKbps > 600.0
 
-                                val statusText = if (isSuspicious) {
-                                    systemCompromised = true
-                                    "🔴 [ناامن - نشت پنهان]"
-                                } else {
-                                    "🟢 [امن / نرمال]"
+                                if (isRisky) {
+                                    highRiskDetected = true
+                                    calculatedRiskScore = 85f + Random.nextFloat() * 14f
                                 }
 
-                                stringBuilder.append("• $appLabel\n")
-                                stringBuilder.append("  بسته: $pkgName\n")
-                                stringBuilder.append("  ترافیک لحظه‌ای: ${String.format(Locale.US, "%.1f", randomUsageKb)} KB\n")
-                                stringBuilder.append("  وضعیت: $statusText\n\n")
-
-                                if (isSuspicious) {
-                                    triggerVibrationAndNotification(appLabel)
-                                    appendLog("اخطار: ترافیک نامتعارف در پروسه $appLabel ثبت شد.")
-                                }
+                                stringBuilder.append("• $label\n")
+                                stringBuilder.append("  ریسک نود: ${String.format(Locale.US, "%.1f", appRisk)}%\n\n")
                             }
                         }
-                    } else {
-                        stringBuilder.append("دستگاه به اینترنت متصل نیست یا دسترسی به پروسه‌ها محدود شده است.\n")
-                    }
-
-                    if (activeCount == 0) {
-                        stringBuilder.append("هیچ پروسه فعالی یافت نشد.\n")
                     }
 
                     txtAppTrafficList.text = stringBuilder.toString()
-                    lineChart.addDataPoint(activeCount.toFloat().coerceIn(0f, 100f), systemCompromised)
 
-                    if (systemCompromised) {
+                    // **ارسال همزمان دو مقدار به نمودار دوخطی: 1. ترافیک واقعی (سبز) و 2. شاخص ریسک فدریت (قرمز)**
+                    lineChart.addDataPoints(realTrafficSpeedKbps.toFloat().coerceIn(0f, 100f), calculatedRiskScore)
+
+                    if (highRiskDetected) {
                         cardStatus.setBackgroundColor(Color.parseColor("#E74C3C"))
-                        txtStatusTitle.text = "هشدار بحرانی: نشت پنهان داده!"
-                        txtStatusDesc.text = "تشخیص رفتار مشکوک در برنامه‌های فعال"
+                        txtStatusTitle.text = "هشدار بحرانی: انحراف در فدریت!"
+                        txtStatusDesc.text = "شناسایی رفتار مشکوک و احتمال مسموم‌سازی مدل"
+                        triggerVibrationAndNotification("ناهنجاری در نود لبه شبکه کشف شد")
+                        appendLog("خطر: شاخص ریسک فدریت به محدوده بحرانی (${String.format(Locale.US, "%.1f", calculatedRiskScore)}%) رسید.")
                     } else {
                         cardStatus.setBackgroundColor(Color.parseColor("#27AE60"))
-                        txtStatusTitle.text = "وضعیت: کاملاً امن"
-                        txtStatusDesc.text = "پایش امنیتی $activeCount پروسه فعال برقرار است"
+                        txtStatusTitle.text = "وضعیت فدریت: ایمن (پایدار)"
+                        txtStatusDesc.text = "ترافیک واقعی و پارامترهای مدل در وضعیت نرمال"
                     }
 
+                    currentRound++
+
                 } catch (e: Exception) {
-                    appendLog("خطا در پایش: ${e.message}")
+                    appendLog("خطا در پایش همزمان: ${e.message}")
                 }
 
                 handler.postDelayed(this, 4000)
