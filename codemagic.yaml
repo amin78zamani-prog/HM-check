@@ -1,0 +1,15 @@
+workflows:
+  android-debug-workflow:
+    name: HM-check Debug Build
+    max_build_duration: 15
+    environment:
+      java: 17
+    scripts:
+      - name: Generate Gradle Wrapper
+        script: gradle wrapper --gradle-version 8.5
+      - name: Grant execute permission for gradlew
+        script: chmod +x gradlew
+      - name: Build Debug APK
+        script: ./gradlew assembleDebug --no-daemon
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
