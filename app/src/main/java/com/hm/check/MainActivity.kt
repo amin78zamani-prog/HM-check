@@ -1,7 +1,11 @@
 package com.hm.check
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlin.random.Random
 
@@ -29,12 +34,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var liveUpdateRunnable: Runnable
 
     private val PERMISSION_REQUEST_CODE = 1001
+    private val CHANNEL_ID = "hm_security_channel"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال المان‌های رابط کاربری
+        checkAndRequestPermissions()
+        createNotificationChannel()
+
         cardStatus = findViewById(R.id.cardStatus)
         txtStatusTitle = findViewById(R.id.txtStatusTitle)
         txtStatusDesc = findViewById(R.id.txtStatusDesc)
@@ -43,16 +51,16 @@ class MainActivity : AppCompatActivity() {
         lineChart = findViewById(R.id.lineChart)
         btnSimulate = findViewById(R.id.btnSimulate)
 
-        // بررسی و درخواست دسترسی‌ها هنگام اجرای اولیه برنامه
-        checkAndRequestPermissions()
-
-        // مدیریت کلیک دکمه شبیه‌سازی برای ارائه در جلسه دفاع
         btnSimulate.setOnClickListener {
             isThreatActive = !isThreatActive
             updateDashboardState()
+            
+            // اگر تهدید فعال شد، نوتیفیکیشن هشدار ارسال کن
+            if (isThreatActive) {
+                sendSecurityNotification("هشدار امنیتی بحرانی!", "ترافیک مشکوک و غیرعادی در شبکه شناسایی شد.")
+            }
         }
 
-        // راه‌اندازی شبیه‌ساز به‌روزرسانی زنده مقادیر شبکه
         startLiveMonitoring()
     }
 
@@ -64,7 +72,6 @@ class MainActivity : AppCompatActivity() {
         val hasPhonePermission = ContextCompat.checkSelfPermission(this, phoneStatePermission) == PackageManager.PERMISSION_GRANTED
 
         if (!hasNetworkPermission || !hasPhonePermission) {
-            // درخواست مجوزها از کاربر به صورت پاپ‌آپ
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(networkStatePermission, phoneStatePermission),
@@ -73,14 +80,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // دریافت نتیجه پاسخ کاربر به کادر دسترسی
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Security Alerts"
+            val descriptionText = "Notifications for network security threats"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+                enableVibration(true)
+            }
+            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun sendSecurityNotification(title: String, message: String) {
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(1, builder.build())
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "دسترسی‌های امنیتی شبکه تأیید شد", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "هشدار: برخی دسترسی‌ها رد شد، پایش شبکه ممکن است محدود شود", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -102,17 +132,21 @@ class MainActivity : AppCompatActivity() {
     private fun startLiveMonitoring() {
         liveUpdateRunnable = object : Runnable {
             override fun run() {
+                val currentValue: Float
                 if (!isThreatActive) {
                     val randomSockets = Random.nextInt(10, 25)
                     txtSockets.text = "سوکت‌های فعال: $randomSockets"
                     txtTraffic.text = "ترافیک شبکه: عادی (${Random.nextInt(120, 350)} کیلوبایت بر ثانیه)"
-                    lineChart.addDataPoint(Random.nextFloat() * 20f + 15f, false)
+                    currentValue = Random.nextFloat() * 20f + 15f
+                    lineChart.addDataPoint(currentValue, false)
                 } else {
                     val highSockets = Random.nextInt(70, 120)
                     txtSockets.text = "سوکت‌های فعال: $highSockets (بحرانی)"
                     txtTraffic.text = "ترافیک شبکه: بحرانی (${Random.nextInt(2, 5)} مگابایت بر ثانیه)"
-                    lineChart.addDataPoint(Random.nextFloat() * 25f + 70f, true)
+                    currentValue = Random.nextFloat() * 25f + 70f
+                    lineChart.addDataPoint(currentValue, true)
                 }
+
                 handler.postDelayed(this, 2000)
             }
         }
