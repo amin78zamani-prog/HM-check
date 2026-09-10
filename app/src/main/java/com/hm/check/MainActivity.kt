@@ -9,16 +9,22 @@ import android.graphics.Color
 import android.net.TrafficStats
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtAppTrafficList: TextView
     private lateinit var lineChart: LineChartView
     private lateinit var txtLogHistory: TextView
+    private lateinit var btnSaveLogs: Button
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var liveUpdateRunnable: Runnable
@@ -45,7 +52,6 @@ class MainActivity : AppCompatActivity() {
     private val CHANNEL_ID = "fl_security_channel"
 
     private var currentRound = 1
-    private var modelAccuracy = 94.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         txtAppTrafficList = findViewById(R.id.txtAppTrafficList)
         lineChart = findViewById(R.id.lineChart)
         txtLogHistory = findViewById(R.id.txtLogHistory)
+        btnSaveLogs = findViewById(R.id.btnSaveLogs)
 
         lastRxBytes = TrafficStats.getTotalRxBytes()
         lastTxBytes = TrafficStats.getTotalTxBytes()
@@ -67,7 +74,13 @@ class MainActivity : AppCompatActivity() {
         lastTx = lastTxBytes
         lastTime = System.currentTimeMillis()
 
-        appendLog("پایشگر همزمان ترافیک واقعی و ریسک فدریت (مبتنی بر الگوریتم تحلیلی) فعال شد.")
+        appendLog("پایشگر امنیتی فدریت و تحلیل نشت پس‌زمینه راه‌اندازی شد.")
+
+        // فعال‌سازی کامل دکمه وسط‌چین ذخیره لاگ
+        btnSaveLogs.setOnClickListener {
+            saveLogsToFile()
+        }
+
         startDualMetricMonitoring()
     }
 
@@ -75,9 +88,34 @@ class MainActivity : AppCompatActivity() {
         try {
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentText = txtLogHistory.text.toString()
+            // نمایش زنده لاگ جدید در کادر صفحه
             txtLogHistory.text = "$currentText[$currentTime] $message\n"
         } catch (e: Exception) {
             // صامت
+        }
+    }
+
+    private fun saveLogsToFile() {
+        try {
+            val logContent = txtLogHistory.text.toString()
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "HM_Check_Security_Log_$timeStamp.txt"
+
+            // ذخیره در پوشه اسناد عمومی دستگاه
+            val documentsDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
+            if (!documentsDir.exists()) {
+                documentsDir.mkdirs()
+            }
+            val file = File(documentsDir, fileName)
+            val outputStream = FileOutputStream(file)
+            outputStream.write(logContent.toByteArray())
+            outputStream.close()
+
+            Toast.makeText(this, "لاگ‌ها با موفقیت در فایل ذخیره شد:\n${file.name}", Toast.LENGTH_LONG).show()
+            appendLog("سیستم: فایل گزارش امنیتی در مسیر Documents ذخیره گردید.")
+        } catch (e: Exception) {
+            Toast.makeText(this, "خطا در ذخیره‌سازی فایل: ${e.message}", Toast.LENGTH_SHORT).show()
+            appendLog("خطا: امکان ذخیره فایل لاگ وجود ندارد.")
         }
     }
 
@@ -108,7 +146,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                .setContentTitle("هشدار ریسک یادگیری فدریت!")
+                .setContentTitle("هشدار نشت پنهان در پس‌زمینه!")
                 .setContentText(riskTitle)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
@@ -125,14 +163,25 @@ class MainActivity : AppCompatActivity() {
             }
             if (vibrator.hasVibrator()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(400, VibrationEffect.DEFAULT_AMPLITUDE))
+                    vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
                 } else {
                     @Suppress("DEPRECATION")
-                    vibrator.vibrate(400)
+                    vibrator.vibrate(500)
                 }
             }
         } catch (e: Exception) {
             // صامت
+        }
+    }
+
+    // متد بررسی خاموش یا روشن بودن صفحه نمایش گوشی
+    private fun isScreenOff(): Boolean {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.WIFI_MODE_FULL_HIGH_PERF /* یا مستقیم با API جدید */) {
+            !powerManager.isInteractive
+        } else {
+            @Suppress("DEPRECATION")
+            !powerManager.isScreenOn
         }
     }
 
@@ -164,7 +213,6 @@ class MainActivity : AppCompatActivity() {
                     stringBuilder.append("--- دوره فدریت (FL Round #$currentRound) ---\n")
                     stringBuilder.append("نرخ ترافیک واقعی: ${String.format(Locale.US, "%.1f", realTrafficSpeedKbps)} KB/s\n\n")
 
-                    // محاسبه پایه ریسک کلی سیستم بر اساس ترافیک و حجم پردازش‌ها
                     var calculatedRiskScore = (realTrafficSpeedKbps / 12.0).toFloat().coerceIn(5f, 45f)
 
                     if (runningProcesses != null) {
@@ -178,16 +226,17 @@ class MainActivity : AppCompatActivity() {
                                     pkg.substringAfterLast('.')
                                 }
 
-                                // الگوریتم تحلیل ریسک واقعی بر اساس همبستگی بار پردازشی و پهنای باند
                                 val baseRiskFactor = (activeCount * 1.8f) + (realTrafficSpeedKbps / 15.0f).toFloat()
                                 val appRisk = baseRiskFactor.coerceIn(5f, 95f)
 
-                                // تشخیص ناهنجاری واقعی بر اساس عبور از آستانه استاندارد
-                                val isRisky = appRisk > 75.0f || realTrafficSpeedKbps > 500.0
+                                // **اصلاح کلیدی:** دانلود در حالت عادی (صفحه روشن) ناامن محسوب نمی‌شود.
+                                // شرایط بحرانی فقط زمانی رخ می‌دهد که ترافیک بالا باشد و در عین حال "صفحه گوشی خاموش" باشد (نشت پنهان پس‌زمینه)
+                                val screenOff = isScreenOff()
+                                val isRisky = screenOff && (appRisk > 60.0f || realTrafficSpeedKbps > 400.0)
 
                                 if (isRisky) {
                                     highRiskDetected = true
-                                    calculatedRiskScore = (appRisk * 1.15f).coerceIn(80f, 99f)
+                                    calculatedRiskScore = (appRisk * 1.2f).coerceIn(80f, 99f)
                                 }
 
                                 stringBuilder.append("• $label\n")
@@ -197,26 +246,24 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     txtAppTrafficList.text = stringBuilder.toString()
-
-                    // ارسال مقادیر تحلیلی واقعی به نمودار دوخطی
                     lineChart.addDataPoints(realTrafficSpeedKbps.toFloat().coerceIn(0f, 100f), calculatedRiskScore)
 
                     if (highRiskDetected) {
                         cardStatus.setBackgroundColor(Color.parseColor("#E74C3C"))
-                        txtStatusTitle.text = "هشدار بحرانی: انحراف در فدریت!"
-                        txtStatusDesc.text = "شناسایی رفتار مشکوک و احتمال مسموم‌سازی مدل"
-                        triggerVibrationAndNotification("ناهنجاری در نود لبه شبکه کشف شد")
-                        appendLog("خطر: شاخص ریسک فدریت به محدوده بحرانی (${String.format(Locale.US, "%.1f", calculatedRiskScore)}%) رسید.")
+                        txtStatusTitle.text = "هشدار بحرانی: نشت پنهان در پس‌زمینه!"
+                        txtStatusDesc.text = "فعالیت غیرمجاز شبکه در حالت خاموش بودن صفحه"
+                        triggerVibrationAndNotification("ترافیک مشکوک در حالت اسکرین‌آف کشف شد")
+                        appendLog("خطر: نشت داده در پس‌زمینه با ریسک ${String.format(Locale.US, "%.1f", calculatedRiskScore)}% تشخیص داده شد.")
                     } else {
                         cardStatus.setBackgroundColor(Color.parseColor("#27AE60"))
                         txtStatusTitle.text = "وضعیت فدریت: ایمن (پایدار)"
-                        txtStatusDesc.text = "ترافیک واقعی و پارامترهای مدل در وضعیت نرمال"
+                        txtStatusDesc.text = "ترافیک دستگاه نرمال و بدون فعالیت مخرب پس‌زمینه"
                     }
 
                     currentRound++
 
                 } catch (e: Exception) {
-                    appendLog("خطا در پایش همزمان: ${e.message}")
+                    appendLog("خطا در پایش: ${e.message}")
                 }
 
                 handler.postDelayed(this, 4000)
