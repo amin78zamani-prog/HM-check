@@ -8,89 +8,61 @@
     android:gravity="center_horizontal"
     android:background="#F5F6FA">
 
-    <!-- عنوان داشبورد -->
+    <!-- عنوان داشبورد امنیتی -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="داشبورد امنیت شبکه HM-check"
-        android:textSize="18sp"
+        android:text="سیستم تشخیص نشت پنهان و ناهنجاری (HM-check)"
+        android:textSize="16sp"
         android:textStyle="bold"
         android:textColor="#2C3E50"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="10dp" />
 
-    <!-- کارت وضعیت امنیتی (نشانگر زنده) -->
+    <!-- کارت وضعیت کلی امنیت سیستم -->
     <LinearLayout
         android:id="@+id/cardStatus"
         android:layout_width="match_parent"
-        android:layout_height="90dp"
+        android:layout_height="75dp"
         android:orientation="vertical"
         android:gravity="center"
         android:background="#27AE60"
         android:elevation="4dp"
-        android:layout_marginBottom="12dp">
+        android:layout_marginBottom="10dp">
 
         <TextView
             android:id="@+id/txtStatusTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="سیستم ایمن"
+            android:text="وضعیت: امن (بدون نشت پنهان)"
             android:textColor="#FFFFFF"
-            android:textSize="17sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/txtStatusDesc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="هیچ ناهنجاری در شبکه شناسایی نشد"
+            android:text="تمامی پکیج‌ها در وضعیت نرمال هستند"
             android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp" />
+            android:textSize="11sp"
+            android:layout_marginTop="3dp" />
     </LinearLayout>
 
-    <!-- بخش آمار و اطلاعات زنده -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#FFFFFF"
-        android:padding="12dp"
-        android:elevation="2dp"
-        android:layout_marginBottom="12dp">
-
-        <TextView
-            android:id="@+id/txtSockets"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="سوکت‌های فعال: ۱۴"
-            android:textSize="14sp"
-            android:textColor="#333333"
-            android:paddingBottom="4dp" />
-
-        <TextView
-            android:id="@+id/txtTraffic"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ترافیک شبکه: عادی"
-            android:textSize="14sp"
-            android:textColor="#333333" />
-    </LinearLayout>
-
-    <!-- کانتینر رسم نمودار خطی با مقیاس -->
+    <!-- کانتینر رسم نمودار خطی ترافیک کلی -->
     <com.hm.check.LineChartView
         android:id="@+id/lineChart"
         android:layout_width="match_parent"
-        android:layout_height="90dp"
+        android:layout_height="80dp"
         android:background="#FFFFFF"
         android:elevation="2dp"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="10dp" />
 
-    <!-- بخش تاریخچه و لاگ رویدادها -->
+    <!-- بخش لیست زنده مصرف و وضعیت نشت برنامه‌ها -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="تاریخچه و لاگ رویدادهای امنیتی:"
-        android:textSize="13sp"
+        android:text="پایش لحظه‌ای ترافیک و وضعیت نشت پنهان اپلیکیشن‌ها:"
+        android:textSize="12sp"
         android:textStyle="bold"
         android:textColor="#555555"
         android:layout_marginBottom="4dp" />
@@ -102,26 +74,34 @@
         android:background="#FFFFFF"
         android:padding="8dp"
         android:elevation="2dp"
-        android:layout_marginBottom="12dp">
+        android:layout_marginBottom="10dp">
 
         <TextView
-            android:id="@+id/txtLogHistory"
+            android:id="@+id/txtAppTrafficList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="[شروع سیستم] مانیتورینگ زنده فعال شد...\n"
+            android:text="در حال اسکن سوکت‌ها و پردازش ترافیک برنامه‌ها...\n"
             android:textSize="12sp"
             android:textColor="#333333"
             android:fontFamily="monospace" />
     </ScrollView>
 
-    <!-- دکمه مخصوص جلسه دفاع برای تست ناهنجاری -->
-    <Button
-        android:id="@+id/btnSimulate"
+    <!-- بخش لاگ رویدادهای امنیتی -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="شبیه‌سازی تهدید امنیتی"
-        android:textSize="15sp"
-        android:backgroundTint="#E74C3C"
-        android:textColor="#FFFFFF" />
+        android:layout_height="75dp"
+        android:background="#2C3E50"
+        android:padding="6dp"
+        android:elevation="2dp">
+
+        <TextView
+            android:id="@+id/txtLogHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="[System] مانیتورینگ امنیتی لایه میزبان فعال شد.\n"
+            android:textSize="10sp"
+            android:textColor="#ECF0F1"
+            android:fontFamily="monospace" />
+    </ScrollView>
 
 </LinearLayout>
