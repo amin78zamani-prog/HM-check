@@ -86,39 +86,24 @@
             android:fontFamily="monospace" />
     </ScrollView>
 
-    <!-- بخش لاگ امنیتی سیستم همراه با دکمه ذخیره‌سازی -->
-    <LinearLayout
+    <!-- عنوان بخش لاگ -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
+        android:text="گزارش رویدادهای سیستم (Audit Logs):"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
+        android:layout_marginBottom="4dp" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="گزارش رویدادهای سیستم (Audit Logs):"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#555555" />
-
-        <Button
-            android:id="@+id/btnSaveLogs"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:text="ذخیره لاگ‌ها"
-            android:textSize="10sp"
-            android:backgroundTint="#2C3E50"
-            android:textColor="#FFFFFF" />
-    </LinearLayout>
-
+    <!-- کادر نمایش لاگ‌ها -->
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="65dp"
+        android:layout_height="60dp"
         android:background="#2C3E50"
         android:padding="6dp"
-        android:elevation="2dp">
+        android:elevation="2dp"
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/txtLogHistory"
@@ -129,5 +114,17 @@
             android:textColor="#ECF0F1"
             android:fontFamily="monospace" />
     </ScrollView>
+
+    <!-- دکمه ذخیره لاگ‌ها (کاملاً وسط‌چین‌شده و فعال) -->
+    <Button
+        android:id="@+id/btnSaveLogs"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:text="ذخیره فایل لاگ‌ها"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:backgroundTint="#2C3E50"
+        android:textColor="#FFFFFF"
+        android:layout_gravity="center_horizontal" />
 
 </LinearLayout>
