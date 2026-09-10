@@ -49,15 +49,15 @@ class MainActivity : AppCompatActivity() {
         if (isThreatActive) {
             // حالت خطر / ناهنجاری شبکه
             cardStatus.setBackgroundColor(Color.parseColor("#E74C3C")) // رنگ قرمز
-            txtStatusTitle.text = "SECURITY ALERT!"
-            txtStatusDesc.text = "Anomalous network traffic detected (C&C Beacon)"
-            btnSimulate.text = "Reset Dashboard"
+            txtStatusTitle.text = "هشدار امنیتی!"
+            txtStatusDesc.text = "شناسایی ترافیک مشکوک شبکه (ارتباط C&C)"
+            btnSimulate.text = "بازنشانی داشبورد"
         } else {
             // حالت امن و عادی
             cardStatus.setBackgroundColor(Color.parseColor("#27AE60")) // رنگ سبز
-            txtStatusTitle.text = "SYSTEM SECURE"
-            txtStatusDesc.text = "No network anomalies detected"
-            btnSimulate.text = "Simulate Security Threat"
+            txtStatusTitle.text = "سیستم ایمن"
+            txtStatusDesc.text = "هیچ ناهنجاری در شبکه شناسایی نشد"
+            btnSimulate.text = "شبیه‌سازی تهدید امنیتی"
         }
     }
 
@@ -67,13 +67,13 @@ class MainActivity : AppCompatActivity() {
                 if (!isThreatActive) {
                     // تولید مقادیر تصادفی نرمال برای سوکت‌ها و پهنای باند
                     val randomSockets = Random.nextInt(10, 25)
-                    txtSockets.text = "Active Sockets: $randomSockets"
-                    txtTraffic.text = "Network Bandwidth: Normal (${Random.nextInt(120, 350)} KB/s)"
+                    txtSockets.text = "سوکت‌های فعال: $randomSockets"
+                    txtTraffic.text = "ترافیک شبکه: عادی (${Random.nextInt(120, 350)} کیلوبایت بر ثانیه)"
                 } else {
                     // مقادیر بالا و مشکوک در حالت تهدید
                     val highSockets = Random.nextInt(70, 120)
-                    txtSockets.text = "Active Sockets: $highSockets (HIGH)"
-                    txtTraffic.text = "Network Bandwidth: Critical (${Random.nextInt(2, 5)} MB/s)"
+                    txtSockets.text = "سوکت‌های فعال: $highSockets (بحرانی)"
+                    txtTraffic.text = "ترافیک شبکه: بحرانی (${Random.nextInt(2, 5)} مگابایت بر ثانیه)"
                 }
                 // تکرار هر ۲ ثانیه برای ایجاد حس داشبورد زنده
                 handler.postDelayed(this, 2000)
@@ -84,7 +84,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // جلوگیری از نشت حافظه
         handler.removeCallbacks(liveUpdateRunnable)
     }
 }
