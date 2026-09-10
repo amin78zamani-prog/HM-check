@@ -8,60 +8,60 @@
     android:gravity="center_horizontal"
     android:background="#F5F6FA">
 
-    <!-- عنوان داشبورد امنیتی -->
+    <!-- عنوان داشبورد امنیتی فدریت -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="سیستم تشخیص نشت پنهان و ناهنجاری (HM-check)"
-        android:textSize="16sp"
+        android:text="داشبورد امنیت فدریت و تشخیص ناهنجاری (HM-check)"
+        android:textSize="15sp"
         android:textStyle="bold"
         android:textColor="#2C3E50"
         android:layout_marginBottom="10dp" />
 
-    <!-- کارت وضعیت کلی امنیت سیستم -->
+    <!-- کارت وضعیت ریسک مدل فدریت -->
     <LinearLayout
         android:id="@+id/cardStatus"
         android:layout_width="match_parent"
-        android:layout_height="75dp"
+        android:layout_height="70dp"
         android:orientation="vertical"
         android:gravity="center"
         android:background="#27AE60"
         android:elevation="4dp"
-        android:layout_marginBottom="10dp">
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/txtStatusTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="وضعیت: امن (بدون نشت پنهان)"
+            android:text="وضعیت ریسک فدریت: امن (پایدار)"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/txtStatusDesc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="تمامی پکیج‌ها در وضعیت نرمال هستند"
+            android:text="ترافیک واقعی و پارامترهای مدل در وضعیت نرمال"
             android:textColor="#FFFFFF"
             android:textSize="11sp"
-            android:layout_marginTop="3dp" />
+            android:layout_marginTop="2dp" />
     </LinearLayout>
 
-    <!-- کانتینر رسم نمودار خطی ترافیک کلی -->
+    <!-- نمودار دوخطی همزمان -->
     <com.hm.check.LineChartView
         android:id="@+id/lineChart"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
+        android:layout_height="75dp"
         android:background="#FFFFFF"
         android:elevation="2dp"
-        android:layout_marginBottom="10dp" />
+        android:layout_marginBottom="8dp" />
 
-    <!-- بخش لیست زنده مصرف و وضعیت نشت برنامه‌ها -->
+    <!-- بخش مانیتورینگ پروسه‌ها -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="پایش لحظه‌ای ترافیک و وضعیت نشت پنهان اپلیکیشن‌ها:"
+        android:text="وضعیت نود محلی و ارزیابی ریسک یادگیری فدریت:"
         android:textSize="12sp"
         android:textStyle="bold"
         android:textColor="#555555"
@@ -74,22 +74,48 @@
         android:background="#FFFFFF"
         android:padding="8dp"
         android:elevation="2dp"
-        android:layout_marginBottom="10dp">
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/txtAppTrafficList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="در حال اسکن سوکت‌ها و پردازش ترافیک برنامه‌ها...\n"
+            android:text="در حال مقداردهی اولیه مدل یادگیری فدریت در لبه شبکه...\n"
             android:textSize="12sp"
             android:textColor="#333333"
             android:fontFamily="monospace" />
     </ScrollView>
 
-    <!-- بخش لاگ رویدادهای امنیتی -->
+    <!-- بخش لاگ امنیتی سیستم همراه با دکمه ذخیره‌سازی -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="گزارش رویدادهای سیستم (Audit Logs):"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#555555" />
+
+        <Button
+            android:id="@+id/btnSaveLogs"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="ذخیره لاگ‌ها"
+            android:textSize="10sp"
+            android:backgroundTint="#2C3E50"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="75dp"
+        android:layout_height="65dp"
         android:background="#2C3E50"
         android:padding="6dp"
         android:elevation="2dp">
@@ -98,7 +124,7 @@
             android:id="@+id/txtLogHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="[System] مانیتورینگ امنیتی لایه میزبان فعال شد.\n"
+            android:text="[FL-Node] پروتکل آموزشی امن فعال شد.\n"
             android:textSize="10sp"
             android:textColor="#ECF0F1"
             android:fontFamily="monospace" />
