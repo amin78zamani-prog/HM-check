@@ -66,7 +66,7 @@ class LineChartView @JvmOverloads constructor(
         val height = height.toFloat() - paddingBottom
         val maxVal = 100f
 
-        // رسم خطوط راهنمای مقادیر در کنار نمودار (محور Y)
+        // رسم خطوط و مقادیر در کنار نمودار (محور Y)
         canvas.drawText("100", 5f, 30f, textPaint)
         canvas.drawLine(paddingLeft, 20f, width, 20f, gridPaint)
 
