@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="20dp"
+    android:padding="16dp"
     android:gravity="center_horizontal"
     android:background="#F5F6FA">
 
@@ -13,21 +13,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="داشبورد امنیت شبکه HM-check"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#2C3E50"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="12dp" />
 
     <!-- کارت وضعیت امنیتی (نشانگر زنده) -->
     <LinearLayout
         android:id="@+id/cardStatus"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="90dp"
         android:orientation="vertical"
         android:gravity="center"
         android:background="#27AE60"
         android:elevation="4dp"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="12dp">
 
         <TextView
             android:id="@+id/txtStatusTitle"
@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:text="سیستم ایمن"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
 
         <TextView
@@ -44,8 +44,8 @@
             android:layout_height="wrap_content"
             android:text="هیچ ناهنجاری در شبکه شناسایی نشد"
             android:textColor="#FFFFFF"
-            android:textSize="13sp"
-            android:layout_marginTop="6dp" />
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
     </LinearLayout>
 
     <!-- بخش آمار و اطلاعات زنده -->
@@ -54,54 +54,73 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="#FFFFFF"
-        android:padding="14dp"
+        android:padding="12dp"
         android:elevation="2dp"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="12dp">
 
         <TextView
             android:id="@+id/txtSockets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="سوکت‌های فعال: ۱۴"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textColor="#333333"
-            android:paddingBottom="6dp" />
+            android:paddingBottom="4dp" />
 
         <TextView
             android:id="@+id/txtTraffic"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="ترافیک شبکه: عادی"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textColor="#333333" />
     </LinearLayout>
 
-    <!-- عنوان بخش نمودار -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="روند مصرف شبکه در طول زمان"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="#555555"
-        android:layout_marginBottom="6dp" />
-
-    <!-- کانتینر یا ویوی رسم نمودار خطی در پایین -->
+    <!-- کانتینر رسم نمودار خطی با مقیاس -->
     <com.hm.check.LineChartView
         android:id="@+id/lineChart"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
+        android:layout_height="90dp"
         android:background="#FFFFFF"
         android:elevation="2dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="12dp" />
+
+    <!-- بخش تاریخچه و لاگ رویدادها -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="تاریخچه و لاگ رویدادهای امنیتی:"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
+        android:layout_marginBottom="4dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#FFFFFF"
+        android:padding="8dp"
+        android:elevation="2dp"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:id="@+id/txtLogHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="[شروع سیستم] مانیتورینگ زنده فعال شد...\n"
+            android:textSize="12sp"
+            android:textColor="#333333"
+            android:fontFamily="monospace" />
+    </ScrollView>
 
     <!-- دکمه مخصوص جلسه دفاع برای تست ناهنجاری -->
     <Button
         android:id="@+id/btnSimulate"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="48dp"
         android:text="شبیه‌سازی تهدید امنیتی"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:backgroundTint="#E74C3C"
         android:textColor="#FFFFFF" />
 
