@@ -76,7 +76,6 @@ class MainActivity : AppCompatActivity() {
 
         appendLog("پایشگر امنیتی فدریت و تحلیل نشت پس‌زمینه راه‌اندازی شد.")
 
-        // فعال‌سازی کامل دکمه وسط‌چین ذخیره لاگ
         btnSaveLogs.setOnClickListener {
             saveLogsToFile()
         }
@@ -88,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         try {
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentText = txtLogHistory.text.toString()
-            // نمایش زنده لاگ جدید در کادر صفحه
             txtLogHistory.text = "$currentText[$currentTime] $message\n"
         } catch (e: Exception) {
             // صامت
@@ -101,7 +99,6 @@ class MainActivity : AppCompatActivity() {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val fileName = "HM_Check_Security_Log_$timeStamp.txt"
 
-            // ذخیره در پوشه اسناد عمومی دستگاه
             val documentsDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
             if (!documentsDir.exists()) {
                 documentsDir.mkdirs()
@@ -111,7 +108,7 @@ class MainActivity : AppCompatActivity() {
             outputStream.write(logContent.toByteArray())
             outputStream.close()
 
-            Toast.makeText(this, "لاگ‌ها با موفقیت در فایل ذخیره شد:\n${file.name}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "لاگ‌ها با موفقیت ذخیره شد:\n${file.name}", Toast.LENGTH_LONG).show()
             appendLog("سیستم: فایل گزارش امنیتی در مسیر Documents ذخیره گردید.")
         } catch (e: Exception) {
             Toast.makeText(this, "خطا در ذخیره‌سازی فایل: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -174,15 +171,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // متد بررسی خاموش یا روشن بودن صفحه نمایش گوشی
+    // بررسی دقیق وضعیت روشن یا خاموش بودن صفحه نمایش
     private fun isScreenOff(): Boolean {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.WIFI_MODE_FULL_HIGH_PERF /* یا مستقیم با API جدید */) {
-            !powerManager.isInteractive
-        } else {
-            @Suppress("DEPRECATION")
-            !powerManager.isScreenOn
-        }
+        return !powerManager.isInteractive
     }
 
     private fun startDualMetricMonitoring() {
@@ -229,8 +221,7 @@ class MainActivity : AppCompatActivity() {
                                 val baseRiskFactor = (activeCount * 1.8f) + (realTrafficSpeedKbps / 15.0f).toFloat()
                                 val appRisk = baseRiskFactor.coerceIn(5f, 95f)
 
-                                // **اصلاح کلیدی:** دانلود در حالت عادی (صفحه روشن) ناامن محسوب نمی‌شود.
-                                // شرایط بحرانی فقط زمانی رخ می‌دهد که ترافیک بالا باشد و در عین حال "صفحه گوشی خاموش" باشد (نشت پنهان پس‌زمینه)
+                                // شرط ناامنی: ترافیک بالا در حالت خاموش بودن صفحه نمایش (نشت پنهان پس‌زمینه)
                                 val screenOff = isScreenOff()
                                 val isRisky = screenOff && (appRisk > 60.0f || realTrafficSpeedKbps > 400.0)
 
