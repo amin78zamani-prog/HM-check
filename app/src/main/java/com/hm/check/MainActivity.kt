@@ -36,8 +36,11 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var liveUpdateRunnable: Runnable
 
+    // تعریف متغیرهای گم‌شده برای محاسبه ترافیک شبکه
     private var lastRxBytes: Long = 0
     private var lastTxBytes: Long = 0
+    private var lastRx: Long = 0
+    private var lastTx: Long = 0
     private var lastTime: Long = 0
 
     private val PERMISSION_REQUEST_CODE = 1001
@@ -62,6 +65,8 @@ class MainActivity : AppCompatActivity() {
 
         lastRxBytes = TrafficStats.getTotalRxBytes()
         lastTxBytes = TrafficStats.getTotalTxBytes()
+        lastRx = lastRxBytes
+        lastTx = lastTxBytes
         lastTime = System.currentTimeMillis()
 
         appendLog("پایشگر همزمان ترافیک واقعی و ریسک فدریت فعال شد.")
@@ -161,7 +166,6 @@ class MainActivity : AppCompatActivity() {
                     stringBuilder.append("--- دوره فدریت (FL Round #$currentRound) ---\n")
                     stringBuilder.append("نرخ ترافیک واقعی: ${String.format(Locale.US, "%.1f", realTrafficSpeedKbps)} KB/s\n\n")
 
-                    // محاسبه شاخص ریسک فدریت بر اساس نوسان ترافیک و پروسه‌ها
                     var calculatedRiskScore = (realTrafficSpeedKbps / 10.0).toFloat().coerceIn(5f, 40f)
 
                     if (runningProcesses != null) {
@@ -191,7 +195,6 @@ class MainActivity : AppCompatActivity() {
 
                     txtAppTrafficList.text = stringBuilder.toString()
 
-                    // **ارسال همزمان دو مقدار به نمودار دوخطی: 1. ترافیک واقعی (سبز) و 2. شاخص ریسک فدریت (قرمز)**
                     lineChart.addDataPoints(realTrafficSpeedKbps.toFloat().coerceIn(0f, 100f), calculatedRiskScore)
 
                     if (highRiskDetected) {
