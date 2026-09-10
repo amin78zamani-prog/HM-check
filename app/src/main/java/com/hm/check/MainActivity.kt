@@ -17,6 +17,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtSockets: TextView
     private lateinit var txtTraffic: TextView
     private lateinit var lineChart: LineChartView
+    private lateinit var txtLogHistory: TextView
     private lateinit var btnSimulate: Button
 
     private var isThreatActive = false
@@ -49,19 +53,30 @@ class MainActivity : AppCompatActivity() {
         txtSockets = findViewById(R.id.txtSockets)
         txtTraffic = findViewById(R.id.txtTraffic)
         lineChart = findViewById(R.id.lineChart)
+        txtLogHistory = findViewById(R.id.txtLogHistory)
         btnSimulate = findViewById(R.id.btnSimulate)
+
+        appendLog("سیستم پایشگر امنیتی با موفقیت راه‌اندازی شد.")
 
         btnSimulate.setOnClickListener {
             isThreatActive = !isThreatActive
             updateDashboardState()
             
-            // اگر تهدید فعال شد، نوتیفیکیشن هشدار ارسال کن
             if (isThreatActive) {
                 sendSecurityNotification("هشدار امنیتی بحرانی!", "ترافیک مشکوک و غیرعادی در شبکه شناسایی شد.")
+                appendLog("هشدار: ترافیک مشکوک C&C شناسایی و ثبت شد!")
+            } else {
+                appendLog("وضعیت سیستم به حالت نرمال و امن بازگشت.")
             }
         }
 
         startLiveMonitoring()
+    }
+
+    private fun appendLog(message: String) {
+        val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val currentText = txtLogHistory.text.toString()
+        txtLogHistory.text = "$currentText[$currentTime] $message\n"
     }
 
     private fun checkAndRequestPermissions() {
@@ -110,7 +125,9 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "دسترسی‌های امنیتی شبکه تأیید شد", Toast.LENGTH_SHORT).show()
+                appendLog("دسترسی‌های سیستمی و شبکه تأیید شد.")
+            } else {
+                appendLog("اخطار: برخی دسترسی‌های سیستمی رد شد.")
             }
         }
     }
