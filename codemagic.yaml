@@ -5,10 +5,14 @@ workflows:
     environment:
       java: 17
     scripts:
-      - name: Generate Gradle Wrapper
-        script: gradle wrapper --gradle-version 8.5
       - name: Grant execute permission for gradlew
-        script: chmod +x gradlew
+        script: |
+          if [ -f ./gradlew ]; then
+            chmod +x gradlew
+          else
+            gradle wrapper --gradle-version 8.5
+            chmod +x gradlew
+          fi
       - name: Build Debug APK
         script: ./gradlew assembleDebug --no-daemon
     artifacts:
